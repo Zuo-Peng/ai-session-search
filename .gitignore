@@ -1,0 +1,14 @@
+# binary
+/ais
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# plan (local dev notes)
+plan.md
