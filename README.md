@@ -7,6 +7,7 @@ A local CLI tool for searching and previewing Claude Code and Codex conversation
 - **Full-text search** across Claude Code (`~/.claude/projects/`) and Codex (`~/.codex/sessions/`) JSONL logs
 - **Incremental indexing** using SQLite FTS5 (only re-indexes changed files)
 - **Interactive TUI** with session list + conversation preview (powered by Bubble Tea)
+- **One-key resume**: press Enter on any result to copy the resume command (`cd <dir> && claude --resume <id>` or `codex resume <uuid>`) to clipboard
 - **Pipe-friendly output** in TSV format when stdout is not a terminal
 - **Conversation preview** with role-based formatting (user/assistant/tool/system)
 - **Filters**: by source (`claude`/`codex`), role, date range
@@ -52,7 +53,7 @@ ais search "keyword" | less
 ais search "keyword" --source claude --role user --since 2026-01-01 --limit 50
 ```
 
-When running in a terminal, `ais search` launches an interactive TUI with a session list on the left and a conversation preview on the right.
+When running in a terminal, `ais search` launches an interactive TUI with a session list on the left and a conversation preview on the right. Press Enter on any result to copy its resume command to your clipboard -- paste it into your terminal to instantly resume that conversation.
 
 When piped, it outputs TSV:
 
