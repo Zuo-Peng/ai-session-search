@@ -18,6 +18,7 @@ func main() {
 
 	rootCmd.AddCommand(indexCmd())
 	rootCmd.AddCommand(searchCmd())
+	rootCmd.AddCommand(listCmd())
 	rootCmd.AddCommand(previewCmd())
 	rootCmd.AddCommand(openCmd())
 	rootCmd.AddCommand(doctorCmd())

@@ -19,6 +19,13 @@ import (
 
 const debounceDelay = 200 * time.Millisecond
 
+type tuiMode int
+
+const (
+	modeSearch tuiMode = iota
+	modeList
+)
+
 // message types
 
 type searchResultMsg struct {
@@ -36,6 +43,7 @@ type debounceTickMsg struct {
 type model struct {
 	db          *index.DB
 	searchOpts  search.Options
+	mode        tuiMode
 	query       string
 	results     []search.Result
 	cursor      int
@@ -73,6 +81,36 @@ func initialModel(db *index.DB, query string, opts search.Options) model {
 // If the user selects a result, it copies the session ID to clipboard.
 func Run(db *index.DB, query string, opts search.Options) error {
 	m := initialModel(db, query, opts)
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	finalModel, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("tui: %w", err)
+	}
+
+	fm := finalModel.(model)
+	if fm.openResult != nil {
+		return copySessionID(db, fm.openResult.SessionKey, fm.openResult.Source)
+	}
+	return nil
+}
+
+// RunList starts the TUI in list mode, showing all sessions sorted by update time.
+func RunList(db *index.DB, opts search.Options) error {
+	ti := textinput.New()
+	ti.Placeholder = "Filter..."
+	ti.Focus()
+	ti.Prompt = "> "
+	ti.PromptStyle = styleInputPrompt
+	ti.TextStyle = styleInput
+	ti.CharLimit = 256
+
+	m := model{
+		db:          db,
+		searchOpts:  opts,
+		mode:        modeList,
+		filterInput: ti,
+		preview:     viewport.New(0, 0),
+	}
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	finalModel, err := p.Run()
 	if err != nil {
@@ -140,10 +178,12 @@ func extractUUID(s string) string {
 	return s
 }
 
-// Init triggers the initial search if a query was provided.
+// Init triggers the initial search/list load.
 func (m model) Init() tea.Cmd {
 	cmds := []tea.Cmd{textinput.Blink}
-	if m.query != "" {
+	if m.mode == modeList {
+		cmds = append(cmds, m.doListAll(""))
+	} else if m.query != "" {
 		cmds = append(cmds, m.doSearch(m.query))
 	}
 	return tea.Batch(cmds...)
@@ -274,7 +314,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case debounceTickMsg:
 		// Only fire search if query hasn't changed since debounce was scheduled
 		if msg.query == m.query {
-			cmds = append(cmds, m.doSearch(msg.query))
+			if m.mode == modeList {
+				cmds = append(cmds, m.doListAll(msg.query))
+			} else {
+				cmds = append(cmds, m.doSearch(msg.query))
+			}
 		}
 		return m, tea.Batch(cmds...)
 
@@ -465,6 +509,21 @@ func (m model) doSearch(query string) tea.Cmd {
 		}
 		results, err := search.Search(db, opts)
 		return searchResultMsg{query: query, results: results, err: err}
+	}
+}
+
+func (m model) doListAll(filter string) tea.Cmd {
+	db := m.db
+	opts := m.searchOpts
+	opts.Query = filter
+	return func() tea.Msg {
+		if filter == "" {
+			results, err := search.ListAll(db, opts)
+			return searchResultMsg{query: filter, results: results, err: err}
+		}
+		// When there's input, do full-text search across all conversation content
+		results, err := search.Search(db, opts)
+		return searchResultMsg{query: filter, results: results, err: err}
 	}
 }
 

@@ -78,6 +78,71 @@ func makeSnippet(text, query string, contextChars int) string {
 	return prefix + snippet + suffix
 }
 
+// ListAll returns all sessions ordered by updated_at DESC (no FTS).
+// When opts.Query is non-empty, it filters by summary/repo_cwd LIKE match.
+func ListAll(db *index.DB, opts Options) ([]Result, error) {
+	var conditions []string
+	var args []interface{}
+
+	if opts.Query != "" {
+		conditions = append(conditions, "(s.summary LIKE ? OR s.repo_cwd LIKE ?)")
+		q := "%" + opts.Query + "%"
+		args = append(args, q, q)
+	}
+	if opts.Source != "" {
+		conditions = append(conditions, "s.source = ?")
+		args = append(args, opts.Source)
+	}
+	if opts.Since != "" {
+		conditions = append(conditions, "s.updated_at >= ?")
+		args = append(args, opts.Since)
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	limitClause := ""
+	if opts.Limit > 0 {
+		limitClause = fmt.Sprintf("LIMIT %d", opts.Limit)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			s.session_key,
+			s.updated_at,
+			s.source,
+			s.repo_cwd,
+			s.summary
+		FROM sessions s
+		%s
+		ORDER BY s.updated_at DESC
+		%s
+	`, where, limitClause)
+
+	rows, err := db.Raw().Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []Result
+	for rows.Next() {
+		var r Result
+		if err := rows.Scan(
+			&r.SessionKey, &r.UpdatedAt,
+			&r.Source, &r.RepoCwd, &r.Summary,
+		); err != nil {
+			return nil, err
+		}
+		r.ChunkID = -1
+		r.Snippet = r.Summary
+		results = append(results, r)
+	}
+	return results, rows.Err()
+}
+
 func Search(db *index.DB, opts Options) ([]Result, error) {
 	if opts.Limit <= 0 {
 		opts.Limit = 100

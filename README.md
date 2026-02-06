@@ -5,6 +5,7 @@ A local CLI tool for searching and previewing Claude Code and Codex conversation
 ## Features
 
 - **Full-text search** across Claude Code (`~/.claude/projects/`) and Codex (`~/.codex/sessions/`) JSONL logs
+- **Browse all sessions**: `ais list` shows all sessions sorted by update time, with real-time full-text filtering
 - **Incremental indexing** using SQLite FTS5 (only re-indexes changed files)
 - **Interactive TUI** with session list + conversation preview (powered by Bubble Tea)
 - **One-key resume**: press Enter on any result to copy the resume command (`cd <dir> && claude --resume <id>` or `codex resume <uuid>`) to clipboard
@@ -39,6 +40,18 @@ ais index
 Scans `~/.claude/projects/` and `~/.codex/sessions/` for JSONL conversation files, parses them into chunks, and stores them in a local SQLite database with FTS5.
 
 Subsequent runs are incremental -- only changed files are re-indexed.
+
+### Browse all sessions
+
+```bash
+# Browse all sessions sorted by update time (newest first)
+ais list
+
+# With filters
+ais list --source claude --since 2026-01-01
+```
+
+Opens an interactive TUI showing all indexed sessions. Type in the filter box to do full-text search across conversation content. Press Enter to copy the resume command to clipboard.
 
 ### Search
 

@@ -84,19 +84,23 @@ func formatResultLine(r search.Result, width int, selected bool) []string {
 		line1 = "  " + line1
 	}
 
-	// Line 2: snippet (dimmed, indented)
-	snippet := strings.ReplaceAll(r.Snippet, "\n", " ")
-	snippet = strings.ReplaceAll(snippet, "\t", " ")
-	snippet = strings.ReplaceAll(snippet, ">>>", "")
-	snippet = strings.ReplaceAll(snippet, "<<<", "")
+	// Line 2: show repo_cwd for list mode (snippet == summary), otherwise show snippet
+	secondLine := r.Snippet
+	if r.Snippet == r.Summary && r.RepoCwd != "" {
+		secondLine = r.RepoCwd
+	}
+	secondLine = strings.ReplaceAll(secondLine, "\n", " ")
+	secondLine = strings.ReplaceAll(secondLine, "\t", " ")
+	secondLine = strings.ReplaceAll(secondLine, ">>>", "")
+	secondLine = strings.ReplaceAll(secondLine, "<<<", "")
 	snippetMax := width - 4 // indent
 	if snippetMax < 0 {
 		snippetMax = 0
 	}
-	if runewidth.StringWidth(snippet) > snippetMax {
-		snippet = runewidth.Truncate(snippet, snippetMax, "")
+	if runewidth.StringWidth(secondLine) > snippetMax {
+		secondLine = runewidth.Truncate(secondLine, snippetMax, "")
 	}
-	line2 := "    " + lipgloss.NewStyle().Foreground(colorDim).Render(snippet)
+	line2 := "    " + lipgloss.NewStyle().Foreground(colorDim).Render(secondLine)
 
 	return []string{line1, line2}
 }
